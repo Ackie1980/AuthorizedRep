@@ -1,0 +1,29 @@
+
+> ar-portal@0.1.0 db:seed
+> tsx prisma/seed.ts
+
+Seeding database...
+PrismaClientInitializationError: 
+Invalid `prisma.auditLog.deleteMany()` invocation in
+C:\Users\BartVanAcker\Documents\AuthorizedRep\ar-portal\prisma\seed.ts:10:25
+
+   7 console.log('Seeding database...')
+   8 
+   9 // Clear existing data
+→ 10 await prisma.auditLog.deleteMany(
+error: Environment variable not found: DATABASE_URL.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider = "postgresql"
+ 7 |   url      = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+    at $n.handleRequestError (C:\Users\BartVanAcker\Documents\AuthorizedRep\ar-portal\node_modules\@prisma\client\runtime\library.js:121:7615)
+    at $n.handleAndLogRequestError (C:\Users\BartVanAcker\Documents\AuthorizedRep\ar-portal\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (C:\Users\BartVanAcker\Documents\AuthorizedRep\ar-portal\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (C:\Users\BartVanAcker\Documents\AuthorizedRep\ar-portal\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async main (C:\Users\BartVanAcker\Documents\AuthorizedRep\ar-portal\prisma\seed.ts:10:3) {
+  clientVersion: '5.22.0',
+  errorCode: undefined
+}
