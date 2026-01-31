@@ -214,7 +214,7 @@ Add AR Services module to the existing IFUcare platform, leveraging shared infra
 ┌────────────────┐   ┌────────────────┐   ┌────────────────┐
 │   Phase 1      │   │   Phase 2      │   │   Phase 3      │
 │   Foundation   │──▶│   Automation   │──▶│   Enhancement  │
-│   (3 months)   │   │   (3 months)   │   │   (3 months)   │
+│   (2 months)   │   │   (2 months)   │   │   (2 months)   │
 └────────────────┘   └────────────────┘   └────────────────┘
         │                    │                    │
         ▼                    ▼                    ▼

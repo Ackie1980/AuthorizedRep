@@ -266,6 +266,18 @@ erDiagram
         uuid reviewed_by FK
     }
 
+    DOCUMENT ||--o{ DOCUMENT_VERSIONS : has
+
+    DOCUMENT_VERSIONS {
+        uuid id PK
+        uuid document_id FK
+        integer version_number
+        string file_url
+        string changes_summary
+        uuid created_by FK
+        timestamp created_at
+    }
+
     CERTIFICATE {
         uuid id PK
         uuid manufacturer_id FK

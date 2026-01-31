@@ -6,7 +6,7 @@
 
 ### Talking Points:
 - Recommend **Extend IFUcare** approach - maximize existing investment
-- Phased delivery over **9 months** with early customer value
+- Phased delivery over **6 months** with early customer value
 - Self-service portal reduces operational burden by **40%**
 - Regulatory compliance built-in (EUDAMED, Swissdamed, MHRA)
 - **ROI positive** within 18 months
@@ -61,7 +61,7 @@
 | P3 | Email-based CoFS requests | Tracking, SLA compliance |
 
 ### Key Insight:
-- 70+ user stories → Need prioritization framework
+- 70 user stories → Need prioritization framework
 - Focus on **MoSCoW** method for phased delivery
 
 ---
@@ -176,7 +176,7 @@
 ### 3-Phase Implementation:
 
 ```
-Phase 1 (Months 1-3)     Phase 2 (Months 4-6)     Phase 3 (Months 7-9)
+Phase 1 (Months 1-2)     Phase 2 (Months 3-4)     Phase 3 (Months 5-6)
 ─────────────────────    ─────────────────────    ─────────────────────
 FOUNDATION               AUTOMATION               INTELLIGENCE
 
@@ -199,7 +199,7 @@ Customer self-service    No missed expirations    Full visibility
 
 ## Slide 8: User Story Prioritization Framework (0.5 min)
 
-**Key Message:** Structured approach to managing 70+ requirements.
+**Key Message:** Structured approach to managing 70 requirements.
 
 ### MoSCoW Prioritization:
 
@@ -249,7 +249,7 @@ Customer self-service    No missed expirations    Full visibility
    - IFUcare already has regulatory DNA
    - Build on strength rather than start over
 
-2. **"How do you handle the 70+ user stories?"**
+2. **"How do you handle the 70 user stories?"**
    - MoSCoW prioritization with stakeholder input
    - Iterative delivery - MVP first, enhance based on feedback
    - Regular sprint reviews with customer involvement

@@ -97,12 +97,13 @@
 
 | Category | Cost |
 |----------|------|
-| Development (Claude-assisted) | €90,000 |
-| Tools & Licenses | €2,400 |
-| Infrastructure (12 months) | €7,000 |
-| QA & Testing | €8,000 |
-| Contingency | €10,700 |
-| **Total Investment** | **€118,100** |
+| Development (Claude-assisted) | €80,000 |
+| Tools & Services | €2,300 |
+| Infrastructure (6 months dev + 3 months prod) | €7,000 |
+| Project Management | €8,000 |
+| QA & Testing | €6,000 |
+| Contingency (10%) | €10,300 |
+| **Total Investment** | **€113,600** |
 
 ### Quantified Benefits (Annual)
 
@@ -146,9 +147,9 @@
 | Metric | Year 1 | Year 2 | Year 3 |
 |--------|--------|--------|--------|
 | **Total Benefits** | €110,100* | €220,200 | €220,200 |
-| **Total Costs** | €118,100 | €25,000 | €25,000 |
-| **Net Benefit** | -€8,000 | €195,200 | €195,200 |
-| **Cumulative Net** | -€8,000 | €187,200 | €382,400 |
+| **Total Costs** | €113,600 | €25,000 | €25,000 |
+| **Net Benefit** | -€3,500 | €195,200 | €195,200 |
+| **Cumulative Net** | -€3,500 | €191,700 | €386,900 |
 
 *Year 1 benefits prorated (50%) due to implementation
 

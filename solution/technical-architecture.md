@@ -84,10 +84,21 @@ Extending IFUcare to support AR Services requires careful architectural decision
 | **Database** | PostgreSQL 15 | Reliability, JSON support, full-text search |
 | **Cache** | Redis | Session management, caching |
 | **File Storage** | Azure Blob Storage | Scalable, cost-effective |
-| **Search** | Elasticsearch (or PostgreSQL FTS) | Document and product search |
+| **Search** | PostgreSQL FTS (Phase 1-2), Elasticsearch (Phase 3+) | Document and product search |
 | **Queue** | Redis + BullMQ | Background jobs, notifications |
 | **Email** | SendGrid or Azure Communication Services | Transactional email |
 | **Hosting** | Azure App Service or AKS | Matches IFUcare infrastructure |
+
+### Search Technology Decision
+
+**Phase 1-2:** Use PostgreSQL Full-Text Search (FTS) for MVP simplicity
+- No additional infrastructure required
+- Sufficient for initial scale (50-100 manufacturers, 500-1000 products)
+- Reduces operational complexity during launch
+
+**Phase 3+:** Evaluate Elasticsearch if search performance becomes a bottleneck
+- Consider when: >1000 products, complex faceted search needed, or performance issues
+- Migration path: Index existing data, run parallel, cutover
 
 ### Alternative: Low-Code Approach
 
@@ -341,6 +352,118 @@ CREATE INDEX idx_audit_entity ON audit_log(entity_type, entity_id);
 
 ---
 
+## Workflow State Machine
+
+### Product Status Workflow
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         PRODUCT STATUS STATE MACHINE                         │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+                              ┌─────────┐
+                              │  DRAFT  │◄─────────────────────────────────┐
+                              └────┬────┘                                  │
+                                   │ submit_for_review                     │
+                                   ▼                                       │
+                         ┌─────────────────┐                               │
+                         │  UNDER_REVIEW   │                               │
+                         └────────┬────────┘                               │
+                                  │                                        │
+                    ┌─────────────┼─────────────┐                          │
+                    │ approve     │ reject      │ request_changes          │
+                    ▼             │             ▼                          │
+        ┌───────────────────┐    │    ┌─────────────────┐                 │
+        │ READY_FOR_SUBMIT  │    │    │ NEEDS_REVISION  │─────────────────┘
+        └─────────┬─────────┘    │    └─────────────────┘
+                  │ submit       │
+                  ▼              │
+           ┌────────────┐        │
+           │ SUBMITTED  │        │
+           └──────┬─────┘        │
+                  │              │
+         ┌────────┴────────┐     │
+         │ register        │ reject
+         ▼                 ▼     │
+   ┌────────────┐    ┌──────────┴┐
+   │ REGISTERED │    │ REJECTED  │───────────────────────────────────────┘
+   └──────┬─────┘    └───────────┘
+          │ discontinue
+          ▼
+   ┌──────────────┐
+   │ DISCONTINUED │
+   └──────────────┘
+```
+
+### State Definitions
+
+| State | Description | Allowed Actions |
+|-------|-------------|-----------------|
+| `draft` | Initial state, product being set up | Edit, Delete, Submit for Review |
+| `under_review` | QBD team reviewing product data | Approve, Reject, Request Changes |
+| `needs_revision` | Customer must update product/docs | Edit, Resubmit |
+| `ready_for_submission` | Approved, ready for regulatory submit | Submit to Authority |
+| `submitted` | Submitted to EUDAMED/Swissdamed/MHRA | (Awaiting authority response) |
+| `registered` | Successfully registered with authority | Discontinue, Update (creates new version) |
+| `rejected` | Authority rejected submission | Return to Draft for correction |
+| `discontinued` | Product no longer on market | (Terminal state) |
+
+### State Transitions
+
+```typescript
+const productTransitions: Record<ProductStatus, Transition[]> = {
+  draft: [
+    { to: 'under_review', action: 'submit_for_review', actor: 'customer' }
+  ],
+  under_review: [
+    { to: 'ready_for_submission', action: 'approve', actor: 'ec_rep_expert' },
+    { to: 'needs_revision', action: 'request_changes', actor: 'ec_rep_expert' },
+    { to: 'draft', action: 'reject', actor: 'ec_rep_expert' }
+  ],
+  needs_revision: [
+    { to: 'under_review', action: 'resubmit', actor: 'customer' }
+  ],
+  ready_for_submission: [
+    { to: 'submitted', action: 'submit', actor: 'ec_rep_expert' },
+    { to: 'draft', action: 'cancel', actor: 'ec_rep_manager' }
+  ],
+  submitted: [
+    { to: 'registered', action: 'register', actor: 'system' },
+    { to: 'rejected', action: 'reject', actor: 'system' }
+  ],
+  registered: [
+    { to: 'discontinued', action: 'discontinue', actor: 'ec_rep_manager' }
+  ],
+  rejected: [
+    { to: 'draft', action: 'return_to_draft', actor: 'ec_rep_expert' }
+  ],
+  discontinued: []
+};
+```
+
+### Document Status Workflow
+
+| State | Description | Next States |
+|-------|-------------|-------------|
+| `pending_review` | Uploaded, awaiting review | `under_review` |
+| `under_review` | Being reviewed by EC Rep | `approved`, `needs_revision` |
+| `needs_revision` | Customer must reupload | `pending_review` |
+| `approved` | Document accepted | (Terminal for this version) |
+| `superseded` | Replaced by newer version | (Terminal) |
+
+### Workflow Events & Notifications
+
+| Event | Trigger | Recipients | Channel |
+|-------|---------|------------|---------|
+| `product.submitted` | Customer submits for review | Assigned EC Rep | Email + In-app |
+| `product.approved` | EC Rep approves | Customer | Email + In-app |
+| `product.needs_revision` | EC Rep requests changes | Customer | Email + In-app |
+| `product.registered` | Authority confirms | Customer + EC Rep | Email |
+| `document.uploaded` | Customer uploads document | Assigned EC Rep | In-app |
+| `document.approved` | EC Rep approves document | Customer | Email |
+
+---
+
 ## Security Architecture
 
 ### Authentication & Authorization
@@ -547,3 +670,82 @@ const notificationTriggers = {
 | Application Insights | | €30 |
 | **Total** | | **~€550/month** |
 | **Annual** | | **~€6,600** |
+
+---
+
+## Disaster Recovery & Business Continuity
+
+### Backup Strategy
+
+| Component | Backup Method | Frequency | Retention |
+|-----------|--------------|-----------|-----------|
+| **PostgreSQL Database** | Azure automated backup | Continuous (PITR) | 35 days |
+| **Blob Storage (Documents)** | Geo-redundant storage (GRS) | Real-time | Indefinite |
+| **Application Config** | Git repository | On change | Indefinite |
+| **Secrets (Key Vault)** | Azure managed backup | Daily | 90 days |
+
+### Recovery Point Objective (RPO) & Recovery Time Objective (RTO)
+
+| Scenario | RPO | RTO | Strategy |
+|----------|-----|-----|----------|
+| **Database corruption** | 5 minutes | 1 hour | Point-in-time restore |
+| **Region failure** | 1 hour | 4 hours | Geo-restore to paired region |
+| **Accidental deletion** | 0 (soft delete) | 15 minutes | Restore from soft delete |
+| **Application failure** | 0 | 30 minutes | Redeploy from Git |
+
+### Regulatory Compliance
+
+Per MDR/IVDR requirements, technical documentation must be retained for **10+ years** after the last device is placed on the market:
+
+- **Document Storage:** Azure Blob with LRS (locally redundant) + archive tier for long-term
+- **Audit Logs:** Retained indefinitely, archived after 2 years
+- **Database Backups:** Long-term retention policy (yearly backups kept 10 years)
+
+### Disaster Recovery Procedures
+
+```
+1. DETECTION
+   └── Azure Monitor alerts trigger on:
+       • App Service health check failures
+       • Database connectivity issues
+       • Storage availability <99.9%
+
+2. ASSESSMENT (15 min)
+   └── On-call engineer:
+       • Identifies affected components
+       • Determines scope (partial vs full)
+       • Initiates communication
+
+3. RECOVERY
+   ├── Database Issue:
+   │   └── Point-in-time restore to new server
+   │   └── Update connection strings
+   │   └── Verify data integrity
+   │
+   ├── Application Issue:
+   │   └── Rollback to previous deployment
+   │   └── Or redeploy from Git main branch
+   │
+   └── Region Failure:
+       └── Activate geo-secondary database
+       └── Deploy app to backup region
+       └── Update DNS/Front Door routing
+
+4. VERIFICATION
+   └── Run health checks
+   └── Verify critical workflows
+   └── Confirm data integrity
+
+5. POST-INCIDENT
+   └── Root cause analysis
+   └── Update runbooks if needed
+   └── Customer communication
+```
+
+### Annual DR Testing
+
+| Test | Frequency | Duration | Success Criteria |
+|------|-----------|----------|------------------|
+| Database restore | Quarterly | 2 hours | Data integrity verified |
+| Full region failover | Annually | 4 hours | All services operational |
+| Backup verification | Monthly | 1 hour | Backups readable |

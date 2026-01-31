@@ -2,7 +2,7 @@
 
 ## Overview
 
-The case study mentions 70+ user stories. This document provides a framework for prioritizing and phasing these requirements.
+The case study mentions 70 user stories. This document provides a framework for prioritizing and phasing these requirements.
 
 ## Prioritization Methodology: MoSCoW + WSJF
 
@@ -185,17 +185,17 @@ WSJF Score = (Business Value + Time Criticality + Risk Reduction) / Job Size
 
 ## Phase Mapping
 
-### Phase 1: Foundation (Months 1-3)
+### Phase 1: Foundation (Months 1-2)
 - **Stories:** M01-M20 (Must Have)
 - **Theme:** Core platform, customer workspaces, document management
 - **Exit Criteria:** Customers can login, view products, upload documents
 
-### Phase 2: Automation (Months 4-6)
+### Phase 2: Automation (Months 3-4)
 - **Stories:** S01-S25 (Should Have)
 - **Theme:** Workflows, alerts, regulatory preparation
 - **Exit Criteria:** Automated expiry alerts, submission tracking, EUDAMED export
 
-### Phase 3: Enhancement (Months 7-9)
+### Phase 3: Enhancement (Months 5-6)
 - **Stories:** C01-C15 (Could Have)
 - **Theme:** Efficiency, analytics, advanced workflows
 - **Exit Criteria:** Bulk operations, CoFS workflow, dashboards
@@ -233,26 +233,23 @@ Sprint 0 (2 weeks)
 ├── Architecture decisions
 └── UI/UX wireframes
 
-Sprints 1-6 (Phase 1)
+Sprints 1-4 (Phase 1)
 ├── Sprint 1: Auth + Customer workspace
 ├── Sprint 2: Product CRUD
 ├── Sprint 3: Document upload/download
-├── Sprint 4: Document status workflow
-├── Sprint 5: Basic notifications
-└── Sprint 6: Testing + bug fixes + launch prep
+└── Sprint 4: Document status workflow + Basic notifications
 
 MVP Launch
 
-Sprints 7-12 (Phase 2)
-├── Certificate tracking
-├── Expiry alerts
-├── EUDAMED export
-├── Submission tracking
-└── Customer notifications
+Sprints 5-8 (Phase 2)
+├── Sprint 5: Certificate tracking
+├── Sprint 6: Expiry alerts
+├── Sprint 7: EUDAMED export
+└── Sprint 8: Submission tracking + Customer notifications
 
-Sprints 13-18 (Phase 3)
-├── Bulk operations
-├── CoFS workflow
-├── Analytics
-└── Optimization
+Sprints 9-12 (Phase 3)
+├── Sprint 9: Bulk operations
+├── Sprint 10: CoFS workflow
+├── Sprint 11: Analytics
+└── Sprint 12: Optimization + Final testing
 ```
