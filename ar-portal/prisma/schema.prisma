@@ -1,0 +1,309 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum UserRole {
+  CUSTOMER
+  EC_REP_ASSISTANT
+  EC_REP_EXPERT
+  EC_REP_MANAGER
+  ADMIN
+}
+
+enum ManufacturerStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum ServiceType {
+  EC_REP
+  CH_REP
+  UKRP
+}
+
+enum DeviceType {
+  IVD
+  MD
+}
+
+enum Classification {
+  CLASS_I
+  CLASS_IIA
+  CLASS_IIB
+  CLASS_III
+  CLASS_A
+  CLASS_B
+  CLASS_C
+  CLASS_D
+}
+
+enum Regulation {
+  MDR
+  IVDR
+  MDD
+  IVDD
+}
+
+enum ProductStatus {
+  DRAFT
+  UNDER_REVIEW
+  NEEDS_REVISION
+  READY_FOR_SUBMISSION
+  SUBMITTED
+  REGISTERED
+  REJECTED
+  DISCONTINUED
+}
+
+enum DocumentType {
+  DOC
+  IFU
+  LABEL
+  TECHNICAL_DOC
+  CERTIFICATE
+  OTHER
+}
+
+enum DocumentStatus {
+  PENDING_REVIEW
+  UNDER_REVIEW
+  NEEDS_REVISION
+  APPROVED
+  SUPERSEDED
+}
+
+enum CertificateType {
+  ISO_13485
+  NB_CERTIFICATE
+  INSURANCE
+  DOC
+}
+
+enum CertificateStatus {
+  VALID
+  EXPIRING_SOON
+  EXPIRED
+}
+
+enum SubmissionAuthority {
+  EUDAMED
+  SWISSDAMED
+  MHRA
+}
+
+enum SubmissionStatus {
+  DRAFT
+  READY
+  SUBMITTED
+  REGISTERED
+  REJECTED
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  STATUS_CHANGE
+  LOGIN
+  LOGOUT
+}
+
+// ============================================
+// MODELS
+// ============================================
+
+model User {
+  id                    String            @id @default(uuid()) @db.Uuid
+  email                 String            @unique @db.VarChar(255)
+  passwordHash          String?           @db.VarChar(255)
+  firstName             String            @db.VarChar(100)
+  lastName              String            @db.VarChar(100)
+  role                  UserRole          @default(CUSTOMER)
+  manufacturerId        String?           @db.Uuid
+  isActive              Boolean           @default(true)
+  lastLoginAt           DateTime?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  manufacturer          Manufacturer?     @relation("ManufacturerUsers", fields: [manufacturerId], references: [id])
+  assignedManufacturers Manufacturer[]    @relation("AssignedEcRep")
+  uploadedDocuments     Document[]        @relation("UploadedBy")
+  reviewedDocuments     Document[]        @relation("ReviewedBy")
+  documentVersions      DocumentVersion[] @relation("CreatedBy")
+  submissions           Submission[]
+  auditLogs             AuditLog[]
+
+  @@index([manufacturerId])
+  @@index([email])
+  @@map("users")
+}
+
+model Manufacturer {
+  id              String             @id @default(uuid()) @db.Uuid
+  name            String             @db.VarChar(255)
+  legalName       String?            @db.VarChar(255)
+  address         Json?
+  primaryContact  Json?
+  services        ServiceType[]      @default([])
+  assignedEcRepId String?            @db.Uuid
+  contractStart   DateTime?          @db.Date
+  contractEnd     DateTime?          @db.Date
+  status          ManufacturerStatus @default(ACTIVE)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  assignedEcRep   User?              @relation("AssignedEcRep", fields: [assignedEcRepId], references: [id])
+  users           User[]             @relation("ManufacturerUsers")
+  products        Product[]
+  certificates    Certificate[]
+
+  @@index([assignedEcRepId])
+  @@index([status])
+  @@map("manufacturers")
+}
+
+model Product {
+  id                   String          @id @default(uuid()) @db.Uuid
+  manufacturerId       String          @db.Uuid
+  name                 String          @db.VarChar(255)
+  udiDi                String?         @db.VarChar(100)
+  deviceType           DeviceType?
+  classification       Classification?
+  applicableRegulation Regulation?
+  intendedPurpose      String?
+  status               ProductStatus   @default(DRAFT)
+  metadata             Json            @default("{}")
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+
+  manufacturer         Manufacturer    @relation(fields: [manufacturerId], references: [id], onDelete: Cascade)
+  documents            Document[]
+  submissions          Submission[]
+
+  @@index([manufacturerId])
+  @@index([status])
+  @@index([udiDi])
+  @@map("products")
+}
+
+model Document {
+  id           String          @id @default(uuid()) @db.Uuid
+  productId    String          @db.Uuid
+  documentType DocumentType
+  name         String          @db.VarChar(255)
+  version      String?         @db.VarChar(50)
+  fileUrl      String
+  fileSize     Int?
+  mimeType     String?         @db.VarChar(100)
+  status       DocumentStatus  @default(PENDING_REVIEW)
+  uploadedById String          @db.Uuid
+  reviewedById String?         @db.Uuid
+  reviewNotes  String?
+  metadata     Json            @default("{}")
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  product      Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  uploadedBy   User            @relation("UploadedBy", fields: [uploadedById], references: [id])
+  reviewedBy   User?           @relation("ReviewedBy", fields: [reviewedById], references: [id])
+  versions     DocumentVersion[]
+
+  @@index([productId])
+  @@index([status])
+  @@index([documentType])
+  @@map("documents")
+}
+
+model DocumentVersion {
+  id             String   @id @default(uuid()) @db.Uuid
+  documentId     String   @db.Uuid
+  versionNumber  Int
+  fileUrl        String
+  changesSummary String?
+  createdById    String   @db.Uuid
+  createdAt      DateTime @default(now())
+
+  document       Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  createdBy      User     @relation("CreatedBy", fields: [createdById], references: [id])
+
+  @@unique([documentId, versionNumber])
+  @@index([documentId])
+  @@map("document_versions")
+}
+
+model Certificate {
+  id                String            @id @default(uuid()) @db.Uuid
+  manufacturerId    String            @db.Uuid
+  certificateType   CertificateType
+  issuer            String?           @db.VarChar(255)
+  certificateNumber String?           @db.VarChar(100)
+  issueDate         DateTime?         @db.Date
+  expiryDate        DateTime          @db.Date
+  fileUrl           String?
+  status            CertificateStatus @default(VALID)
+  alertSent4w       Boolean           @default(false)
+  alertSent1w       Boolean           @default(false)
+  alertSentExpired  Boolean           @default(false)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  manufacturer      Manufacturer      @relation(fields: [manufacturerId], references: [id], onDelete: Cascade)
+
+  @@index([manufacturerId])
+  @@index([expiryDate])
+  @@index([status])
+  @@map("certificates")
+}
+
+model Submission {
+  id                 String              @id @default(uuid()) @db.Uuid
+  productId          String              @db.Uuid
+  authority          SubmissionAuthority
+  status             SubmissionStatus    @default(DRAFT)
+  registrationNumber String?             @db.VarChar(100)
+  submittedAt        DateTime?
+  registeredAt       DateTime?
+  submittedById      String?             @db.Uuid
+  notes              String?
+  metadata           Json                @default("{}")
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  product            Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
+  submittedBy        User?               @relation(fields: [submittedById], references: [id])
+
+  @@index([productId])
+  @@index([status])
+  @@index([authority])
+  @@map("submissions")
+}
+
+model AuditLog {
+  id         String      @id @default(uuid()) @db.Uuid
+  entityType String      @db.VarChar(50)
+  entityId   String      @db.Uuid
+  action     AuditAction
+  userId     String?     @db.Uuid
+  oldValues  Json?
+  newValues  Json?
+  ipAddress  String?     @db.VarChar(45)
+  userAgent  String?
+  createdAt  DateTime    @default(now())
+
+  user       User?       @relation(fields: [userId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("audit_log")
+}
