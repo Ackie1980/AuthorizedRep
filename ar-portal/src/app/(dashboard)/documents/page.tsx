@@ -110,7 +110,7 @@ export default function DocumentsPage() {
       ],
     },
     {
-      id: 'category',
+      id: 'documentType',
       title: 'Document Type',
       options: [
         { label: 'Declaration of Conformity', value: 'DOC' },
@@ -155,7 +155,7 @@ export default function DocumentsPage() {
         <DataTable
           columns={columns}
           data={documents}
-          searchKey="title"
+          searchKey="name"
           searchPlaceholder="Search documents..."
           filterColumns={filterColumns}
         />

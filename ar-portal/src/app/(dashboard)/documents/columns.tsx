@@ -27,18 +27,19 @@ import { format } from 'date-fns';
 
 export type Document = {
   id: string;
-  title: string;
-  category: string;
-  fileName: string;
+  name: string;
+  documentType: string;
   fileUrl: string;
   fileSize: number;
   mimeType: string;
-  version: number;
+  version: string | null;
   status: string;
   createdAt: Date;
   uploadedBy: {
     id: string;
-    name: string;
+    firstName: string;
+    lastName: string;
+    email: string;
   };
   product: {
     id: string;
@@ -80,36 +81,38 @@ const formatFileSize = (bytes: number): string => {
 
 export const columns: ColumnDef<Document>[] = [
   {
-    accessorKey: 'title',
+    accessorKey: 'name',
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Document Name" />
     ),
     cell: ({ row }) => {
-      const product = row.original.product;
+      const version = row.original.version;
       return (
         <div className="flex flex-col gap-1">
           <div className="font-medium text-gray-900">
-            {row.getValue('title')}
+            {row.getValue('name')}
           </div>
-          <div className="text-xs text-gray-500">
-            {row.original.fileName} • v{row.original.version}
-          </div>
+          {version && (
+            <div className="text-xs text-gray-500">
+              v{version}
+            </div>
+          )}
         </div>
       );
     },
   },
   {
-    accessorKey: 'category',
+    accessorKey: 'documentType',
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Document Type" />
     ),
     cell: ({ row }) => {
-      const category = row.getValue('category') as string;
+      const documentType = row.getValue('documentType') as string;
       return (
         <div className="flex items-center gap-2">
-          {getCategoryIcon(category)}
+          {getCategoryIcon(documentType)}
           <span className="text-sm text-gray-700">
-            {categoryLabels[category] || category}
+            {categoryLabels[documentType] || documentType}
           </span>
         </div>
       );
@@ -158,7 +161,7 @@ export const columns: ColumnDef<Document>[] = [
     ),
     cell: ({ row }) => {
       const uploader = row.original.uploadedBy;
-      return <div className="text-sm text-gray-700">{uploader.name}</div>;
+      return <div className="text-sm text-gray-700">{uploader.firstName} {uploader.lastName}</div>;
     },
   },
   {
@@ -195,7 +198,9 @@ export const columns: ColumnDef<Document>[] = [
           const url = window.URL.createObjectURL(blob);
           const a = window.document.createElement('a');
           a.href = url;
-          a.download = document.fileName;
+          // Extract filename from fileUrl or use document name
+          const fileName = document.fileUrl.split('/').pop() || document.name;
+          a.download = fileName;
           window.document.body.appendChild(a);
           a.click();
           window.URL.revokeObjectURL(url);
