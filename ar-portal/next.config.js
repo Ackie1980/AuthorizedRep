@@ -17,19 +17,7 @@ const nextConfig = {
     // Fix for Windows: ignore system files that cause EINVAL errors during watch
     config.watchOptions = {
       ...config.watchOptions,
-      ignored: [
-        '**/node_modules/**',
-        '**/.git/**',
-        '**/.next/**',
-        // Windows system files
-        '**/DumpStack.log.tmp',
-        '**/hiberfil.sys',
-        '**/pagefile.sys',
-        '**/swapfile.sys',
-        // Common patterns for system files
-        /[\\/]System Volume Information[\\/]/,
-        /[\\/]\$Recycle\.Bin[\\/]/,
-      ],
+      ignored: /node_modules|\.git|\.next|DumpStack\.log\.tmp|hiberfil\.sys|pagefile\.sys|swapfile\.sys|System Volume Information|\$Recycle\.Bin/,
     };
     return config;
   },
