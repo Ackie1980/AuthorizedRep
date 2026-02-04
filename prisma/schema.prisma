@@ -1,0 +1,190 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String    @id @default(uuid())
+  email          String    @unique
+  passwordHash   String?   @map("password_hash")
+  name           String?
+  role           String    @default("customer") // customer, ec_rep_assistant, ec_rep_expert, ec_rep_manager, admin
+  manufacturerId String?   @map("manufacturer_id")
+  lastLoginAt    DateTime? @map("last_login_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  manufacturer        Manufacturer?  @relation("ManufacturerUsers", fields: [manufacturerId], references: [id])
+  assignedManufacturers Manufacturer[] @relation("AssignedEcRep")
+  uploadedDocuments   Document[]     @relation("UploadedBy")
+  reviewedDocuments   Document[]     @relation("ReviewedBy")
+  submissions         Submission[]
+  auditLogs           AuditLog[]
+
+  @@index([email])
+  @@index([manufacturerId])
+  @@map("users")
+}
+
+model Manufacturer {
+  id              String    @id @default(uuid())
+  name            String
+  legalName       String?   @map("legal_name")
+  address         Json?
+  primaryContact  Json?     @map("primary_contact")
+  services        String[]  @default([])
+  assignedEcRepId String?   @map("assigned_ec_rep_id")
+  contractStart   DateTime? @map("contract_start")
+  contractEnd     DateTime? @map("contract_end")
+  status          String    @default("active")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  assignedEcRep User?         @relation("AssignedEcRep", fields: [assignedEcRepId], references: [id])
+  users         User[]        @relation("ManufacturerUsers")
+  products      Product[]
+  certificates  Certificate[]
+
+  @@index([name])
+  @@index([status])
+  @@map("manufacturers")
+}
+
+model Product {
+  id                   String    @id @default(uuid())
+  manufacturerId       String    @map("manufacturer_id")
+  name                 String
+  udiDi                String?   @map("udi_di")
+  deviceType           String?   @map("device_type") // MD, IVD
+  classification       String?   // I, IIa, IIb, III, A, B, C, D
+  applicableRegulation String?   @map("applicable_regulation") // MDR, IVDR, MDD, IVDD
+  intendedPurpose      String?   @map("intended_purpose")
+  status               String    @default("draft") // draft, under_review, registered, discontinued
+  metadata             Json      @default("{}")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  manufacturer Manufacturer @relation(fields: [manufacturerId], references: [id], onDelete: Cascade)
+  documents    Document[]
+  submissions  Submission[]
+
+  @@index([manufacturerId])
+  @@index([status])
+  @@index([udiDi])
+  @@map("products")
+}
+
+model Document {
+  id           String    @id @default(uuid())
+  productId    String    @map("product_id")
+  documentType String    @map("document_type") // DoC, IFU, Label, TechnicalDoc, Certificate
+  name         String
+  version      String?
+  fileUrl      String    @map("file_url")
+  fileSize     Int?      @map("file_size")
+  mimeType     String?   @map("mime_type")
+  status       String    @default("pending_review") // pending_review, under_review, approved, rejected, needs_revision
+  uploadedById String?   @map("uploaded_by_id")
+  reviewedById String?   @map("reviewed_by_id")
+  reviewNotes  String?   @map("review_notes")
+  metadata     Json      @default("{}")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  product    Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  uploadedBy User?             @relation("UploadedBy", fields: [uploadedById], references: [id])
+  reviewedBy User?             @relation("ReviewedBy", fields: [reviewedById], references: [id])
+  versions   DocumentVersion[]
+
+  @@index([productId])
+  @@index([documentType])
+  @@index([status])
+  @@map("documents")
+}
+
+model DocumentVersion {
+  id             String   @id @default(uuid())
+  documentId     String   @map("document_id")
+  versionNumber  Int      @map("version_number")
+  fileUrl        String   @map("file_url")
+  changesSummary String?  @map("changes_summary")
+  createdById    String?  @map("created_by_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@map("document_versions")
+}
+
+model Certificate {
+  id                String    @id @default(uuid())
+  manufacturerId    String    @map("manufacturer_id")
+  certificateType   String    @map("certificate_type") // ISO_13485, NB_Certificate, Insurance, DoC
+  issuer            String?
+  certificateNumber String?   @map("certificate_number")
+  issueDate         DateTime? @map("issue_date")
+  expiryDate        DateTime  @map("expiry_date")
+  fileUrl           String?   @map("file_url")
+  status            String    @default("valid") // valid, expiring_soon, expired
+  alertSent4w       Boolean   @default(false) @map("alert_sent_4w")
+  alertSent1w       Boolean   @default(false) @map("alert_sent_1w")
+  alertSentExpired  Boolean   @default(false) @map("alert_sent_expired")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  manufacturer Manufacturer @relation(fields: [manufacturerId], references: [id], onDelete: Cascade)
+
+  @@index([manufacturerId])
+  @@index([expiryDate])
+  @@index([status])
+  @@map("certificates")
+}
+
+model Submission {
+  id                 String    @id @default(uuid())
+  productId          String    @map("product_id")
+  authority          String    // EUDAMED, Swissdamed, MHRA
+  submissionType     String?   @map("submission_type") // initial, update, cancellation
+  status             String    @default("draft") // draft, ready, submitted, registered, rejected
+  registrationNumber String?   @map("registration_number")
+  submittedAt        DateTime? @map("submitted_at")
+  registeredAt       DateTime? @map("registered_at")
+  submittedById      String?   @map("submitted_by_id")
+  notes              String?
+  metadata           Json      @default("{}")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  product     Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  submittedBy User?   @relation(fields: [submittedById], references: [id])
+
+  @@index([productId])
+  @@index([authority])
+  @@index([status])
+  @@map("submissions")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id")
+  action     String   // create, update, delete, status_change
+  userId     String?  @map("user_id")
+  oldValues  Json?    @map("old_values")
+  newValues  Json?    @map("new_values")
+  ipAddress  String?  @map("ip_address")
+  userAgent  String?  @map("user_agent")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("audit_log")
+}
